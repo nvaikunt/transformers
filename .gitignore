@@ -130,3 +130,6 @@ dmypy.json
 
 # Data
 coco_captioning/
+checkpoints/
+plots/
+data/

@@ -27,7 +27,7 @@ class Trainer(object):
         
         # Flatten preds and labels
         preds = predictions.view(-1, predictions.shape[-1])
-        labels = labels.view(-1)
+        labels = labels.reshape(-1)
         # Set up CE
         ignore_ix = self.model._null
         ce_loss = torch.nn.CrossEntropyLoss(ignore_index=ignore_ix)

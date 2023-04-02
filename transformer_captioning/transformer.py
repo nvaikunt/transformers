@@ -65,13 +65,12 @@ class MultiHeadAttentionLayer(AttentionLayer):
         assert key.shape == value.shape
 
         # TODO : Compute multi-head attention
- 
         #project query, key and value
         #after projection, split the embedding across num_heads
         #eg - expected shape for value is (N, H, T, D/H)
-        query = self.query_proj(query).view(N, S, H, D/H).transpose(1,2)
-        key = self.key_proj(key).view(N, T, H, D/H).transpose(1,2)
-        value = self.key_proj(key).view(N, T, H, D/H).transpose(1,2)
+        query = self.query_proj(query).view(N, S, H, D // H).transpose(1,2)
+        key = self.key_proj(key).view(N, T, H, D // H).transpose(1,2)
+        value = self.value_proj(value).view(N, T, H, D // H).transpose(1,2)
 
        # assert key.shape == (N, H, T, D/H)
 
@@ -84,7 +83,7 @@ class MultiHeadAttentionLayer(AttentionLayer):
             # Hint : If mask[i,j] = 0, we want softmax(QKT[i,j] + additive_mask[i,j]) to be 0
             # Think about what inputs make softmax 0.
             additive_mask = (1 - attn_mask) * -1e9
-            dot_product += additive_mask
+            dot_product += additive_mask.to(query.device)
         
         # apply softmax, dropout, and use value
         y = torch.matmul(self.dropout(F.softmax(dot_product, dim=-1)), value)
@@ -98,13 +97,13 @@ class PositionalEncoding(nn.Module):
     def __init__(self, embed_dim, dropout=0.1, max_len=5000):
         super().__init__()
         # TODO - use torch.nn.Embedding to create the encoding. Initialize dropout layer.
-        self.encoding = torch.Embedding(max_len, embed_dim)
+        self.encoding = nn.Embedding(max_len, embed_dim)
         self.dropout = nn.Dropout(dropout)
       
     def forward(self, x):
         N, S, D = x.shape
         # TODO - add the encoding to x
-        embeddings = torch.arange(S).repeat(N, 1)
+        embeddings = torch.arange(S).repeat(N, 1).to(x.device)
         # assert embeddings.shape == (N, S)
         output = x + self.encoding(embeddings)
         output = self.dropout(output)
@@ -144,7 +143,7 @@ class CrossAttentionBlock(nn.Module):
         attn_out = self.cross_attn(seq, cond, cond)
         x_resid = self.dropout(attn_out)
         x_out = x_resid + seq
-        return self.layernorm(x_out)
+        return self.norm(x_out)
 
 class FeedForwardBlock(nn.Module):
     def __init__(self, input_dim, num_heads, dim_feedforward=2048, dropout=0.1 ):
